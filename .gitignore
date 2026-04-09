@@ -1,0 +1,10 @@
+__pycache__/
+.venv/
+.env
+.pytest_cache/
+
+# Claude / AI tooling
+.claude/
+CLAUDE.md
+AGENTS.md
+docs/superpowers/

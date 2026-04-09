@@ -1,0 +1,190 @@
+import pytest
+from pytest_httpx import HTTPXMock
+
+from app.connectors.cozy import CozyConnector
+from app.models import File, Service, ShareLink
+
+
+@pytest.fixture
+def connector():
+    return CozyConnector(base_url="https://test.cozy.example", token="test-token")
+
+
+@pytest.mark.asyncio
+async def test_get_service(connector: CozyConnector, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://test.cozy.example/settings/instance",
+        json={
+            "data": {
+                "type": "io.cozy.settings",
+                "id": "io.cozy.settings.instance",
+                "attributes": {"public_name": "My Cozy"},
+            }
+        },
+    )
+    service = await connector.get_service("drive1")
+    assert isinstance(service, Service)
+    assert service.name == "My Cozy"
+
+
+@pytest.mark.asyncio
+async def test_list_files(connector: CozyConnector, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://test.cozy.example/files/root-dir-id",
+        json={
+            "data": {
+                "type": "io.cozy.files",
+                "id": "root-dir-id",
+                "attributes": {
+                    "type": "directory",
+                    "name": "Documents",
+                    "path": "/Documents",
+                    "created_at": "2026-01-10T08:00:00Z",
+                    "updated_at": "2026-01-15T10:30:00Z",
+                },
+                "relationships": {
+                    "contents": {
+                        "data": [
+                            {"type": "io.cozy.files", "id": "file-001"},
+                        ]
+                    }
+                },
+            },
+            "included": [
+                {
+                    "type": "io.cozy.files",
+                    "id": "file-001",
+                    "attributes": {
+                        "type": "file",
+                        "name": "hello.txt",
+                        "path": "/Documents/hello.txt",
+                        "mime": "text/plain",
+                        "size": 12,
+                        "created_at": "2026-01-10T08:00:00Z",
+                        "updated_at": "2026-01-15T10:30:00Z",
+                    },
+                }
+            ],
+        },
+    )
+    files = await connector.list_files("root-dir-id", deep=0)
+    assert len(files) == 1
+    assert files[0].id == "file-001"
+    assert files[0].name == "hello.txt"
+    assert files[0].mime_type == "text/plain"
+
+
+@pytest.mark.asyncio
+async def test_list_files_deep_recursion(connector: CozyConnector, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://test.cozy.example/files/root-dir-id",
+        json={
+            "data": {
+                "type": "io.cozy.files",
+                "id": "root-dir-id",
+                "attributes": {
+                    "type": "directory",
+                    "name": "Documents",
+                    "path": "/Documents",
+                    "created_at": "2026-01-10T08:00:00Z",
+                    "updated_at": "2026-01-15T10:30:00Z",
+                },
+            },
+            "included": [
+                {
+                    "type": "io.cozy.files",
+                    "id": "subdir-001",
+                    "attributes": {
+                        "type": "directory",
+                        "name": "Sub",
+                        "path": "/Documents/Sub",
+                        "created_at": "2026-01-10T08:00:00Z",
+                        "updated_at": "2026-01-15T10:30:00Z",
+                    },
+                }
+            ],
+        },
+    )
+    httpx_mock.add_response(
+        url="https://test.cozy.example/files/subdir-001",
+        json={
+            "data": {
+                "type": "io.cozy.files",
+                "id": "subdir-001",
+                "attributes": {
+                    "type": "directory",
+                    "name": "Sub",
+                    "path": "/Documents/Sub",
+                    "created_at": "2026-01-10T08:00:00Z",
+                    "updated_at": "2026-01-15T10:30:00Z",
+                },
+            },
+            "included": [
+                {
+                    "type": "io.cozy.files",
+                    "id": "nested-file",
+                    "attributes": {
+                        "type": "file",
+                        "name": "nested.txt",
+                        "path": "/Documents/Sub/nested.txt",
+                        "mime": "text/plain",
+                        "size": 5,
+                        "created_at": "2026-01-10T08:00:00Z",
+                        "updated_at": "2026-01-15T10:30:00Z",
+                    },
+                }
+            ],
+        },
+    )
+    files = await connector.list_files("root-dir-id", deep=1)
+    assert len(files) == 1
+    assert files[0].id == "nested-file"
+    assert files[0].name == "nested.txt"
+
+
+@pytest.mark.asyncio
+async def test_get_file(connector: CozyConnector, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://test.cozy.example/files/file-001",
+        json={
+            "data": {
+                "type": "io.cozy.files",
+                "id": "file-001",
+                "attributes": {
+                    "type": "file",
+                    "name": "hello.txt",
+                    "path": "/Documents/hello.txt",
+                    "mime": "text/plain",
+                    "size": 12,
+                    "created_at": "2026-01-10T08:00:00Z",
+                    "updated_at": "2026-01-15T10:30:00Z",
+                },
+            }
+        },
+    )
+    file = await connector.get_file("drive1", "file-001")
+    assert isinstance(file, File)
+    assert file.id == "file-001"
+    assert file.name == "hello.txt"
+
+
+@pytest.mark.asyncio
+async def test_get_share_link(connector: CozyConnector, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://test.cozy.example/permissions",
+        method="POST",
+        json={
+            "data": {
+                "id": "perm-001",
+                "type": "io.cozy.permissions",
+                "attributes": {
+                    "type": "share",
+                    "codes": {"share": "abc123code"},
+                    "shortcodes": {"share": "shortABC"},
+                },
+            }
+        },
+    )
+    link = await connector.get_share_link("drive1", "file-001")
+    assert isinstance(link, ShareLink)
+    assert "shortABC" in link.url
