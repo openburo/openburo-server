@@ -5,10 +5,14 @@ import yaml
 from app.connectors.base import ServiceConnector
 from app.connectors.twake import TwakeConnector
 from app.connectors.gdrive import GDriveConnector
+from app.connectors.jamespot import JamespotConnector
+from app.connectors.nextcloud import NextcloudConnector
 
 CONNECTOR_TYPES: dict[str, type[ServiceConnector]] = {
     "twake": TwakeConnector,
     "gdrive": GDriveConnector,
+    "jamespot": JamespotConnector,
+    "nextcloud": NextcloudConnector,
 }
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "services.yaml"
