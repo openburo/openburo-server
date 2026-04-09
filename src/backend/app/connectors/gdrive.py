@@ -83,6 +83,18 @@ class GDriveConnector(ServiceConnector):
             resp.raise_for_status()
             return self._to_file(resp.json())
 
+    async def get_file_content(self, file_id: str) -> tuple[bytes, str]:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
+            resp = await client.get(
+                f"{self.base_url}/files/{file_id}",
+                headers=self.headers,
+                params={"alt": "media"},
+                follow_redirects=True,
+            )
+            resp.raise_for_status()
+            content_type = resp.headers.get("content-type", "application/octet-stream")
+            return resp.content, content_type
+
     async def get_share_link(self, file_id: str) -> ShareLink:
         async with httpx.AsyncClient(verify=self.verify_tls) as client:
             resp = await client.post(

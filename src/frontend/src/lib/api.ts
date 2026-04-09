@@ -46,6 +46,10 @@ export async function getFile(driveId: string, fileId: string): Promise<FileEntr
 	return res.json();
 }
 
+export function getContentUrl(driveId: string, fileId: string): string {
+	return `${API_BASE}/drive/${driveId}/files/${fileId}/content`;
+}
+
 export async function getShareLink(driveId: string, fileId: string): Promise<ShareLink> {
 	const res = await fetch(`${API_BASE}/drive/${driveId}/files/${fileId}/share`);
 	return res.json();

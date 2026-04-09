@@ -21,5 +21,10 @@ class ServiceConnector(ABC):
         ...
 
     @abstractmethod
+    async def get_file_content(self, file_id: str) -> tuple[bytes, str]:
+        """Returns (content_bytes, content_type)"""
+        ...
+
+    @abstractmethod
     async def get_share_link(self, file_id: str) -> ShareLink:
         ...

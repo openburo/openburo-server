@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 
 from app.config import services
 from app.models import File, Service, ShareLink
@@ -41,6 +42,12 @@ async def list_folder(
     drive_id: str, file_id: str, deep: int = Query(default=0, ge=0)
 ):
     return await get_connector(drive_id).list_folder(file_id, deep)
+
+
+@router.get("/drive/{drive_id}/files/{file_id}/content")
+async def get_file_content(drive_id: str, file_id: str):
+    content, content_type = await get_connector(drive_id).get_file_content(file_id)
+    return Response(content=content, media_type=content_type)
 
 
 @router.get("/drive/{drive_id}/files/{file_id}/share", response_model=ShareLink)

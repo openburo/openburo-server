@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { listDrives, listFiles, listFolder, getShareLink, type Service, type FileEntry, type ShareLink } from '$lib/api';
+	import { listDrives, listFiles, listFolder, getShareLink, getContentUrl, type Service, type FileEntry, type ShareLink } from '$lib/api';
 	import { onMount } from 'svelte';
 
 	let services: Service[] = $state([]);
@@ -7,7 +7,37 @@
 	let columns: FileEntry[][] = $state([]);
 	let selectedFile: FileEntry | null = $state(null);
 	let shareLink: ShareLink | null = $state(null);
+	let textContent: string | null = $state(null);
 	let loading = $state(false);
+
+	const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'image/bmp'];
+	const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+	const AUDIO_TYPES = ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/flac'];
+	const PDF_TYPES = ['application/pdf'];
+	const TEXT_TYPES = [
+		'text/plain', 'text/html', 'text/css', 'text/csv', 'text/xml',
+		'text/markdown', 'text/x-python', 'text/x-java', 'text/x-c',
+		'application/json', 'application/xml', 'application/javascript',
+		'application/x-yaml', 'application/x-sh', 'application/typescript',
+	];
+	const TEXT_EXTENSIONS = [
+		'.txt', '.md', '.json', '.yaml', '.yml', '.xml', '.html', '.css', '.js', '.ts',
+		'.py', '.java', '.c', '.cpp', '.h', '.go', '.rs', '.rb', '.php', '.sh', '.bash',
+		'.toml', '.ini', '.cfg', '.conf', '.env', '.csv', '.sql', '.svelte', '.vue', '.jsx', '.tsx',
+		'.dockerfile', '.gitignore', '.editorconfig', '.prettierrc', '.eslintrc',
+	];
+
+	function getViewerType(file: FileEntry): 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'none' {
+		const mime = file.mime_type.toLowerCase();
+		if (IMAGE_TYPES.includes(mime)) return 'image';
+		if (VIDEO_TYPES.includes(mime)) return 'video';
+		if (AUDIO_TYPES.includes(mime)) return 'audio';
+		if (PDF_TYPES.includes(mime)) return 'pdf';
+		if (TEXT_TYPES.includes(mime)) return 'text';
+		const name = file.name.toLowerCase();
+		if (TEXT_EXTENSIONS.some(ext => name.endsWith(ext))) return 'text';
+		return 'none';
+	}
 
 	onMount(async () => {
 		services = await listDrives();
@@ -17,6 +47,7 @@
 		selectedService = id;
 		selectedFile = null;
 		shareLink = null;
+		textContent = null;
 		loading = true;
 		const files = await listFiles(id);
 		columns = [files];
@@ -26,6 +57,7 @@
 	async function clickEntry(entry: FileEntry, columnIndex: number) {
 		columns = columns.slice(0, columnIndex + 1);
 		shareLink = null;
+		textContent = null;
 
 		if (entry.type === 'directory' && selectedService) {
 			selectedFile = null;
@@ -35,6 +67,11 @@
 			loading = false;
 		} else {
 			selectedFile = entry;
+			if (selectedService && getViewerType(entry) === 'text') {
+				const url = getContentUrl(selectedService, entry.id);
+				const res = await fetch(url);
+				textContent = await res.text();
+			}
 		}
 	}
 
@@ -55,6 +92,11 @@
 			year: 'numeric', month: 'short', day: 'numeric',
 			hour: '2-digit', minute: '2-digit'
 		});
+	}
+
+	function extensionFromName(name: string): string {
+		const dot = name.lastIndexOf('.');
+		return dot >= 0 ? name.slice(dot + 1) : '';
 	}
 </script>
 
@@ -120,55 +162,71 @@
 					Loading...
 				</div>
 			{/if}
+
+			<!-- File viewer panel (inline, right of columns) -->
+			{#if selectedFile && selectedService}
+				{@const viewerType = getViewerType(selectedFile)}
+				{@const contentUrl = getContentUrl(selectedService, selectedFile.id)}
+
+				<div class="flex flex-col min-w-96 flex-1 border-r border-gray-800 bg-gray-900/50">
+					<!-- Viewer area -->
+					<div class="flex-1 overflow-auto p-4">
+						{#if viewerType === 'image'}
+							<div class="flex items-center justify-center h-full">
+								<img src={contentUrl} alt={selectedFile.name} class="max-w-full max-h-full object-contain rounded" />
+							</div>
+						{:else if viewerType === 'video'}
+							<div class="flex items-center justify-center h-full">
+								<video controls class="max-w-full max-h-full rounded">
+									<source src={contentUrl} type={selectedFile.mime_type} />
+									<track kind="captions" />
+								</video>
+							</div>
+						{:else if viewerType === 'audio'}
+							<div class="flex items-center justify-center h-full">
+								<audio controls class="w-full max-w-md">
+									<source src={contentUrl} type={selectedFile.mime_type} />
+									<track kind="captions" />
+								</audio>
+							</div>
+						{:else if viewerType === 'pdf'}
+							<iframe src={contentUrl} title={selectedFile.name} class="w-full h-full rounded border border-gray-700"></iframe>
+						{:else if viewerType === 'text' && textContent !== null}
+							<pre class="text-sm text-gray-300 font-mono whitespace-pre-wrap break-words bg-gray-950 rounded p-4 border border-gray-800 overflow-auto h-full">{textContent}</pre>
+						{:else}
+							<div class="flex flex-col items-center justify-center h-full gap-3 text-gray-500">
+								<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+								</svg>
+								<p class="text-sm">No preview available</p>
+								<a href={contentUrl} download class="mt-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-gray-300 transition-colors">
+									Download file
+								</a>
+							</div>
+						{/if}
+					</div>
+
+					<!-- File info bar -->
+					<div class="border-t border-gray-800 px-4 py-3 flex items-center gap-4 text-xs text-gray-400 bg-gray-900 shrink-0">
+						<span class="font-medium text-gray-200 truncate">{selectedFile.name}</span>
+						<span>{selectedFile.mime_type}</span>
+						<span>{formatSize(selectedFile.size)}</span>
+						<span class="truncate">by {selectedFile.owner}</span>
+						<span class="ml-auto">{formatDate(selectedFile.last_modified)}</span>
+						<button
+							class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-white text-xs font-medium transition-colors"
+							onclick={share}
+						>
+							Share
+						</button>
+						{#if shareLink}
+							<a href={shareLink.url} target="_blank" class="text-blue-400 hover:underline truncate max-w-48">
+								{shareLink.url}
+							</a>
+						{/if}
+					</div>
+				</div>
+			{/if}
 		</div>
-
-		{#if selectedFile}
-			<div class="w-80 border-l border-gray-800 bg-gray-900 p-5 overflow-y-auto shrink-0">
-				<h2 class="font-medium text-base mb-4 break-words">{selectedFile.name}</h2>
-
-				<dl class="space-y-3 text-sm">
-					<div>
-						<dt class="text-gray-500">Type</dt>
-						<dd class="text-gray-200">{selectedFile.mime_type}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-500">Size</dt>
-						<dd class="text-gray-200">{formatSize(selectedFile.size)}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-500">Path</dt>
-						<dd class="text-gray-200 break-all">{selectedFile.path}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-500">Owner</dt>
-						<dd class="text-gray-200">{selectedFile.owner}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-500">Modified</dt>
-						<dd class="text-gray-200">{formatDate(selectedFile.last_modified)}</dd>
-					</div>
-					<div>
-						<dt class="text-gray-500">Created</dt>
-						<dd class="text-gray-200">{formatDate(selectedFile.creation_date)}</dd>
-					</div>
-				</dl>
-
-				<button
-					class="mt-6 w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-sm font-medium transition-colors"
-					onclick={share}
-				>
-					Generate Share Link
-				</button>
-
-				{#if shareLink}
-					<div class="mt-3 p-3 bg-gray-800 rounded-md">
-						<p class="text-xs text-gray-400 mb-1">Share link</p>
-						<a href={shareLink.url} target="_blank" class="text-sm text-blue-400 hover:underline break-all">
-							{shareLink.url}
-						</a>
-					</div>
-				{/if}
-			</div>
-		{/if}
 	</div>
 </div>
