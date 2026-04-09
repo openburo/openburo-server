@@ -35,7 +35,7 @@ def mock_connector():
         size=12,
     )
     connector.get_share_link.return_value = ShareLink(
-        url="https://cozy.example/public?sharecode=abc123"
+        url="https://twake.example/public?sharecode=abc123"
     )
     return connector
 

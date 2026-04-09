@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 
 from app.connectors.base import ServiceConnector
-from app.connectors.cozy import CozyConnector
+from app.connectors.twake import TwakeConnector
 from app.config import settings
 from app.models import File, Service, ShareLink
 
 router = APIRouter()
 
-_connector = CozyConnector(base_url=settings.cozy_url, token=settings.cozy_token)
+_connector = TwakeConnector(base_url=settings.twake_url, token=settings.twake_token)
 
 
 def get_connector() -> ServiceConnector:
