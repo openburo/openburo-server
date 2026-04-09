@@ -1,6 +1,6 @@
 # Openburo-router
 
-Drive proxy API with pluggable service connectors. Translates client requests into backend drive API calls (currently Twake Drive).
+Drive proxy API with pluggable service connectors. Translates client requests into backend drive API calls.
 
 ## Setup
 
@@ -9,21 +9,27 @@ cd src/backend
 uv sync
 ```
 
+## Configuration
+
+Copy `src/backend/services.example.yaml` to `src/backend/services.yaml` and configure your service instances:
+
+```yaml
+services:
+  - id: mytwake
+    type: twake
+    url: https://your-instance.twake.example
+    token: your-bearer-token
+    verify_tls: true
+```
+
+The `id` is used in API paths (e.g. `/drive/mytwake/files`). To add more services, add entries to the list.
+
 ## Run
 
 ```bash
 cd src/backend
-uv run fastapi dev app/main.py
+uv run uvicorn app.main:app --reload
 ```
-
-## Configuration
-
-Copy `src/backend/.env.example` to `src/backend/.env` and set:
-
-| Variable | Purpose |
-|----------|---------|
-| `TWAKE_URL` | Base URL of the Twake Drive instance |
-| `TWAKE_TOKEN` | Authentication token for Twake Drive |
 
 ## API
 
@@ -39,7 +45,7 @@ Copy `src/backend/.env.example` to `src/backend/.env` and set:
 ```bash
 cd src/backend
 docker build -t openburo .
-docker run -p 8000:8000 -e TWAKE_URL=https://your-instance.twake.example -e TWAKE_TOKEN=your-token openburo
+docker run -p 8000:8000 -v ./services.yaml:/app/services.yaml openburo
 ```
 
 ## Tests

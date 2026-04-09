@@ -1,0 +1,6 @@
+services:
+  - id: mytwake
+    type: twake
+    url: https://your-instance.twake.example
+    token: your-bearer-token-here
+    verify_tls: true

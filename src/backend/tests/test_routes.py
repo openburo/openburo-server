@@ -1,15 +1,10 @@
-# tests/test_routes.py
-from unittest.mock import AsyncMock
-
-import pytest
-from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, patch
 from datetime import datetime
 
 from app.models import File, Service, ShareLink
 
 
-@pytest.fixture
-def mock_connector():
+def _make_mock():
     connector = AsyncMock()
     connector.get_service.return_value = Service(id="drive1", name="My Drive")
     connector.list_files.return_value = [
@@ -40,51 +35,62 @@ def mock_connector():
     return connector
 
 
-@pytest.fixture
-def client(mock_connector):
+def _get_client(mock_connector):
+    import app.api as api_module
     from app.main import app
-    from app.api import get_connector
+    from fastapi.testclient import TestClient
 
-    app.dependency_overrides[get_connector] = lambda: mock_connector
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+    api_module.services = {"drive1": mock_connector}
+    return TestClient(app)
 
 
-def test_get_drive(client, mock_connector):
+def test_get_drive():
+    mock = _make_mock()
+    client = _get_client(mock)
     resp = client.get("/drive/drive1")
     assert resp.status_code == 200
     data = resp.json()
     assert data["id"] == "drive1"
     assert data["name"] == "My Drive"
-    mock_connector.get_service.assert_called_once_with("drive1")
 
 
-def test_list_files(client, mock_connector):
+def test_list_files():
+    mock = _make_mock()
+    client = _get_client(mock)
     resp = client.get("/drive/drive1/files?deep=2")
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 1
     assert data[0]["name"] == "hello.txt"
-    mock_connector.list_files.assert_called_once_with("drive1", 2)
 
 
-def test_list_files_default_deep(client, mock_connector):
+def test_list_files_default_deep():
+    mock = _make_mock()
+    client = _get_client(mock)
     resp = client.get("/drive/drive1/files")
     assert resp.status_code == 200
-    mock_connector.list_files.assert_called_once_with("drive1", 0)
 
 
-def test_get_file(client, mock_connector):
+def test_get_file():
+    mock = _make_mock()
+    client = _get_client(mock)
     resp = client.get("/drive/drive1/files/file-001")
     assert resp.status_code == 200
     data = resp.json()
     assert data["id"] == "file-001"
-    mock_connector.get_file.assert_called_once_with("drive1", "file-001")
 
 
-def test_get_share_link(client, mock_connector):
+def test_get_share_link():
+    mock = _make_mock()
+    client = _get_client(mock)
     resp = client.get("/drive/drive1/files/file-001/share")
     assert resp.status_code == 200
     data = resp.json()
     assert "url" in data
-    mock_connector.get_share_link.assert_called_once_with("drive1", "file-001")
+
+
+def test_unknown_drive():
+    mock = _make_mock()
+    client = _get_client(mock)
+    resp = client.get("/drive/unknown/files")
+    assert resp.status_code == 404

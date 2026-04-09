@@ -1,11 +1,38 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+import yaml
+
+from app.connectors.base import ServiceConnector
+from app.connectors.twake import TwakeConnector
+
+CONNECTOR_TYPES: dict[str, type[ServiceConnector]] = {
+    "twake": TwakeConnector,
+}
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "services.yaml"
 
 
-class Settings(BaseSettings):
-    twake_url: str = "http://localhost:8080"
-    twake_token: str = ""
+def _build_connector(entry: dict) -> ServiceConnector:
+    connector_type = entry["type"]
+    cls = CONNECTOR_TYPES.get(connector_type)
+    if cls is None:
+        raise ValueError(f"Unknown service type: {connector_type}")
+    return cls(
+        id=entry["id"],
+        base_url=entry["url"],
+        token=entry["token"],
+        verify_tls=entry.get("verify_tls", True),
+    )
 
-    model_config = {"env_file": ".env"}
+
+def load_services() -> dict[str, ServiceConnector]:
+    with open(CONFIG_PATH) as f:
+        config = yaml.safe_load(f)
+
+    connectors: dict[str, ServiceConnector] = {}
+    for entry in config["services"]:
+        connectors[entry["id"]] = _build_connector(entry)
+    return connectors
 
 
-settings = Settings()
+services = load_services()

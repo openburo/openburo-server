@@ -3,18 +3,22 @@ import httpx
 from app.connectors.base import ServiceConnector
 from app.models import File, Service, ShareLink
 
+ROOT_DIR = "io.cozy.files.root-dir"
+
 
 class TwakeConnector(ServiceConnector):
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, id: str, base_url: str, token: str, verify_tls: bool = True):
+        self.id = id
         self.base_url = base_url.rstrip("/")
         self.token = token
+        self.verify_tls = verify_tls
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.api+json",
         }
 
-    async def get_service(self, service_id: str) -> Service:
-        async with httpx.AsyncClient() as client:
+    async def get_service(self) -> Service:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
             resp = await client.get(
                 f"{self.base_url}/settings/instance",
                 headers=self.headers,
@@ -22,11 +26,11 @@ class TwakeConnector(ServiceConnector):
             resp.raise_for_status()
             data = resp.json()["data"]
             name = data["attributes"].get("public_name", "Twake")
-            return Service(id=service_id, name=name)
+            return Service(id=self.id, name=name)
 
-    async def list_files(self, service_id: str, deep: int = 0) -> list[File]:
-        async with httpx.AsyncClient() as client:
-            return await self._list_dir(client, service_id, deep)
+    async def list_files(self, deep: int = 0) -> list[File]:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
+            return await self._list_dir(client, ROOT_DIR, deep)
 
     async def _list_dir(
         self, client: httpx.AsyncClient, dir_id: str, deep: int
@@ -50,8 +54,8 @@ class TwakeConnector(ServiceConnector):
 
         return files
 
-    async def get_file(self, service_id: str, file_id: str) -> File:
-        async with httpx.AsyncClient() as client:
+    async def get_file(self, file_id: str) -> File:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
             resp = await client.get(
                 f"{self.base_url}/files/{file_id}",
                 headers=self.headers,
@@ -59,8 +63,8 @@ class TwakeConnector(ServiceConnector):
             resp.raise_for_status()
             return self._to_file(resp.json()["data"])
 
-    async def get_share_link(self, service_id: str, file_id: str) -> ShareLink:
-        async with httpx.AsyncClient() as client:
+    async def get_share_link(self, file_id: str) -> ShareLink:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
             body = {
                 "data": {
                     "type": "io.cozy.permissions",

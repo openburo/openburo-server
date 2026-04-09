@@ -7,7 +7,7 @@ from app.models import File, Service, ShareLink
 
 @pytest.fixture
 def connector():
-    return TwakeConnector(base_url="https://test.twake.example", token="test-token")
+    return TwakeConnector(id="test", base_url="https://test.twake.example", token="test-token")
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,7 @@ async def test_get_service(connector: TwakeConnector, httpx_mock: HTTPXMock):
             }
         },
     )
-    service = await connector.get_service("drive1")
+    service = await connector.get_service()
     assert isinstance(service, Service)
     assert service.name == "My Twake"
 
@@ -30,7 +30,7 @@ async def test_get_service(connector: TwakeConnector, httpx_mock: HTTPXMock):
 @pytest.mark.asyncio
 async def test_list_files(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.twake.example/files/root-dir-id",
+        url="https://test.twake.example/files/io.cozy.files.root-dir",
         json={
             "data": {
                 "type": "io.cozy.files",
@@ -67,7 +67,7 @@ async def test_list_files(connector: TwakeConnector, httpx_mock: HTTPXMock):
             ],
         },
     )
-    files = await connector.list_files("root-dir-id", deep=0)
+    files = await connector.list_files(deep=0)
     assert len(files) == 1
     assert files[0].id == "file-001"
     assert files[0].name == "hello.txt"
@@ -77,7 +77,7 @@ async def test_list_files(connector: TwakeConnector, httpx_mock: HTTPXMock):
 @pytest.mark.asyncio
 async def test_list_files_deep_recursion(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.twake.example/files/root-dir-id",
+        url="https://test.twake.example/files/io.cozy.files.root-dir",
         json={
             "data": {
                 "type": "io.cozy.files",
@@ -136,7 +136,7 @@ async def test_list_files_deep_recursion(connector: TwakeConnector, httpx_mock: 
             ],
         },
     )
-    files = await connector.list_files("root-dir-id", deep=1)
+    files = await connector.list_files(deep=1)
     assert len(files) == 1
     assert files[0].id == "nested-file"
     assert files[0].name == "nested.txt"
@@ -162,7 +162,7 @@ async def test_get_file(connector: TwakeConnector, httpx_mock: HTTPXMock):
             }
         },
     )
-    file = await connector.get_file("drive1", "file-001")
+    file = await connector.get_file("file-001")
     assert isinstance(file, File)
     assert file.id == "file-001"
     assert file.name == "hello.txt"
@@ -185,6 +185,6 @@ async def test_get_share_link(connector: TwakeConnector, httpx_mock: HTTPXMock):
             }
         },
     )
-    link = await connector.get_share_link("drive1", "file-001")
+    link = await connector.get_share_link("file-001")
     assert isinstance(link, ShareLink)
     assert "shortABC" in link.url
