@@ -4,3 +4,9 @@ services:
     url: https://your-instance.twake.example
     token: your-bearer-token-here
     verify_tls: true
+
+  - id: mygdrive
+    type: gdrive
+    url: https://www.googleapis.com/drive/v3
+    token: your-oauth2-access-token
+    verify_tls: true

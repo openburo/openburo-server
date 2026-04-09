@@ -4,9 +4,11 @@ import yaml
 
 from app.connectors.base import ServiceConnector
 from app.connectors.twake import TwakeConnector
+from app.connectors.gdrive import GDriveConnector
 
 CONNECTOR_TYPES: dict[str, type[ServiceConnector]] = {
     "twake": TwakeConnector,
+    "gdrive": GDriveConnector,
 }
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "services.yaml"
