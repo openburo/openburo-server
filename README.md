@@ -34,6 +34,14 @@ Copy `src/backend/.env.example` to `src/backend/.env` and set:
 | GET | `/drive/{id}/files/{file_id}` | Fetch file metadata |
 | GET | `/drive/{id}/files/{file_id}/share` | Generate share link |
 
+## Docker
+
+```bash
+cd src/backend
+docker build -t openburo .
+docker run -p 8000:8000 -e COZY_URL=https://your-instance.cozy.example -e COZY_TOKEN=your-token openburo
+```
+
 ## Tests
 
 ```bash
