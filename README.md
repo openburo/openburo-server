@@ -5,18 +5,20 @@ Drive proxy API with pluggable service connectors. Translates client requests in
 ## Setup
 
 ```bash
+cd src/backend
 uv sync
 ```
 
 ## Run
 
 ```bash
+cd src/backend
 uv run fastapi dev app/main.py
 ```
 
 ## Configuration
 
-Copy `.env.example` to `.env` and set:
+Copy `src/backend/.env.example` to `src/backend/.env` and set:
 
 | Variable | Purpose |
 |----------|---------|
@@ -35,5 +37,6 @@ Copy `.env.example` to `.env` and set:
 ## Tests
 
 ```bash
+cd src/backend
 uv run pytest
 ```
