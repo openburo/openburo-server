@@ -4,7 +4,7 @@ from app.connectors.base import ServiceConnector
 from app.models import File, Service, ShareLink
 
 
-class CozyConnector(ServiceConnector):
+class TwakeConnector(ServiceConnector):
     def __init__(self, base_url: str, token: str):
         self.base_url = base_url.rstrip("/")
         self.token = token
@@ -21,7 +21,7 @@ class CozyConnector(ServiceConnector):
             )
             resp.raise_for_status()
             data = resp.json()["data"]
-            name = data["attributes"].get("public_name", "Cozy")
+            name = data["attributes"].get("public_name", "Twake")
             return Service(id=service_id, name=name)
 
     async def list_files(self, service_id: str, deep: int = 0) -> list[File]:

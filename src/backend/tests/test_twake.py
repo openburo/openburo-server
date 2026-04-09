@@ -1,36 +1,36 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from app.connectors.cozy import CozyConnector
+from app.connectors.twake import TwakeConnector
 from app.models import File, Service, ShareLink
 
 
 @pytest.fixture
 def connector():
-    return CozyConnector(base_url="https://test.cozy.example", token="test-token")
+    return TwakeConnector(base_url="https://test.twake.example", token="test-token")
 
 
 @pytest.mark.asyncio
-async def test_get_service(connector: CozyConnector, httpx_mock: HTTPXMock):
+async def test_get_service(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.cozy.example/settings/instance",
+        url="https://test.twake.example/settings/instance",
         json={
             "data": {
                 "type": "io.cozy.settings",
                 "id": "io.cozy.settings.instance",
-                "attributes": {"public_name": "My Cozy"},
+                "attributes": {"public_name": "My Twake"},
             }
         },
     )
     service = await connector.get_service("drive1")
     assert isinstance(service, Service)
-    assert service.name == "My Cozy"
+    assert service.name == "My Twake"
 
 
 @pytest.mark.asyncio
-async def test_list_files(connector: CozyConnector, httpx_mock: HTTPXMock):
+async def test_list_files(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.cozy.example/files/root-dir-id",
+        url="https://test.twake.example/files/root-dir-id",
         json={
             "data": {
                 "type": "io.cozy.files",
@@ -75,9 +75,9 @@ async def test_list_files(connector: CozyConnector, httpx_mock: HTTPXMock):
 
 
 @pytest.mark.asyncio
-async def test_list_files_deep_recursion(connector: CozyConnector, httpx_mock: HTTPXMock):
+async def test_list_files_deep_recursion(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.cozy.example/files/root-dir-id",
+        url="https://test.twake.example/files/root-dir-id",
         json={
             "data": {
                 "type": "io.cozy.files",
@@ -106,7 +106,7 @@ async def test_list_files_deep_recursion(connector: CozyConnector, httpx_mock: H
         },
     )
     httpx_mock.add_response(
-        url="https://test.cozy.example/files/subdir-001",
+        url="https://test.twake.example/files/subdir-001",
         json={
             "data": {
                 "type": "io.cozy.files",
@@ -143,9 +143,9 @@ async def test_list_files_deep_recursion(connector: CozyConnector, httpx_mock: H
 
 
 @pytest.mark.asyncio
-async def test_get_file(connector: CozyConnector, httpx_mock: HTTPXMock):
+async def test_get_file(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.cozy.example/files/file-001",
+        url="https://test.twake.example/files/file-001",
         json={
             "data": {
                 "type": "io.cozy.files",
@@ -169,9 +169,9 @@ async def test_get_file(connector: CozyConnector, httpx_mock: HTTPXMock):
 
 
 @pytest.mark.asyncio
-async def test_get_share_link(connector: CozyConnector, httpx_mock: HTTPXMock):
+async def test_get_share_link(connector: TwakeConnector, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url="https://test.cozy.example/permissions",
+        url="https://test.twake.example/permissions",
         method="POST",
         json={
             "data": {
