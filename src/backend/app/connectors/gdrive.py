@@ -32,6 +32,10 @@ class GDriveConnector(ServiceConnector):
         async with httpx.AsyncClient(verify=self.verify_tls) as client:
             return await self._list_dir(client, "root", deep)
 
+    async def list_folder(self, folder_id: str, deep: int = 0) -> list[File]:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
+            return await self._list_dir(client, folder_id, deep)
+
     async def _list_dir(
         self, client: httpx.AsyncClient, folder_id: str, deep: int
     ) -> list[File]:
@@ -56,12 +60,10 @@ class GDriveConnector(ServiceConnector):
             body = resp.json()
 
             for item in body.get("files", []):
-                if item["mimeType"] == FOLDER_MIME:
-                    if deep > 0:
-                        children = await self._list_dir(client, item["id"], deep - 1)
-                        files.extend(children)
-                else:
-                    files.append(self._to_file(item))
+                files.append(self._to_file(item))
+                if item["mimeType"] == FOLDER_MIME and deep > 0:
+                    children = await self._list_dir(client, item["id"], deep - 1)
+                    files.extend(children)
 
             page_token = body.get("nextPageToken")
             if not page_token:
@@ -103,9 +105,11 @@ class GDriveConnector(ServiceConnector):
         owner = owners[0]["displayName"] if owners else "unknown"
         parents = item.get("parents", [])
         path = f"/{'/'.join(parents)}/{item['name']}" if parents else f"/{item['name']}"
+        file_type = "directory" if item.get("mimeType") == FOLDER_MIME else "file"
         return File(
             id=item["id"],
             name=item["name"],
+            type=file_type,
             mime_type=item.get("mimeType", "application/octet-stream"),
             path=path,
             last_modified=item["modifiedTime"],

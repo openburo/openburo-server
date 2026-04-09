@@ -89,9 +89,12 @@ async def test_list_files_deep(connector: GDriveConnector, httpx_mock: HTTPXMock
         },
     )
     files = await connector.list_files(deep=1)
-    assert len(files) == 1
-    assert files[0].id == "nested-file"
-    assert files[0].name == "nested.txt"
+    assert len(files) == 2
+    assert files[0].id == "folder-001"
+    assert files[0].type == "directory"
+    assert files[1].id == "nested-file"
+    assert files[1].type == "file"
+    assert files[1].name == "nested.txt"
 
 
 @pytest.mark.asyncio

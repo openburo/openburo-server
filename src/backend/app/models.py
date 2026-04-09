@@ -11,6 +11,7 @@ class Service(BaseModel):
 class File(BaseModel):
     id: str
     name: str
+    type: str  # "file" or "directory"
     mime_type: str
     path: str
     last_modified: datetime

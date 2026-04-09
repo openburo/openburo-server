@@ -13,6 +13,10 @@ class ServiceConnector(ABC):
         ...
 
     @abstractmethod
+    async def list_folder(self, folder_id: str, deep: int = 0) -> list[File]:
+        ...
+
+    @abstractmethod
     async def get_file(self, file_id: str) -> File:
         ...
 

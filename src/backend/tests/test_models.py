@@ -13,6 +13,7 @@ def test_file_model():
     file = File(
         id="file-001",
         name="report.pdf",
+        type="file",
         mime_type="application/pdf",
         path="/Documents/report.pdf",
         last_modified=datetime(2026, 1, 15, 10, 30, 0),
@@ -31,6 +32,7 @@ def test_file_model_serialization():
     file = File(
         id="file-001",
         name="report.pdf",
+        type="file",
         mime_type="application/pdf",
         path="/Documents/report.pdf",
         last_modified=datetime(2026, 1, 15, 10, 30, 0),

@@ -11,6 +11,7 @@ def _make_mock():
         File(
             id="file-001",
             name="hello.txt",
+            type="file",
             mime_type="text/plain",
             path="/hello.txt",
             last_modified=datetime(2026, 1, 15, 10, 30, 0),
@@ -22,6 +23,7 @@ def _make_mock():
     connector.get_file.return_value = File(
         id="file-001",
         name="hello.txt",
+        type="file",
         mime_type="text/plain",
         path="/hello.txt",
         last_modified=datetime(2026, 1, 15, 10, 30, 0),

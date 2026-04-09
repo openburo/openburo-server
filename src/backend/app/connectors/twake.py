@@ -32,6 +32,10 @@ class TwakeConnector(ServiceConnector):
         async with httpx.AsyncClient(verify=self.verify_tls) as client:
             return await self._list_dir(client, ROOT_DIR, deep)
 
+    async def list_folder(self, folder_id: str, deep: int = 0) -> list[File]:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
+            return await self._list_dir(client, folder_id, deep)
+
     async def _list_dir(
         self, client: httpx.AsyncClient, dir_id: str, deep: int
     ) -> list[File]:
@@ -46,9 +50,8 @@ class TwakeConnector(ServiceConnector):
 
         for item in included:
             attrs = item["attributes"]
-            if attrs["type"] == "file":
-                files.append(self._to_file(item))
-            elif attrs["type"] == "directory" and deep > 0:
+            files.append(self._to_file(item))
+            if attrs["type"] == "directory" and deep > 0:
                 children = await self._list_dir(client, item["id"], deep - 1)
                 files.extend(children)
 
@@ -99,6 +102,7 @@ class TwakeConnector(ServiceConnector):
         return File(
             id=item["id"],
             name=attrs["name"],
+            type=attrs.get("type", "file"),
             mime_type=attrs.get("mime", "application/octet-stream"),
             path=attrs.get("path", ""),
             last_modified=attrs["updated_at"],
