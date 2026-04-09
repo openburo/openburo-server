@@ -1,4 +1,4 @@
-# OpenBURO
+# Openburo-router
 
 Drive proxy API with pluggable service connectors. Translates client requests into backend drive API calls (currently Twake Drive).
 
