@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { discoverDrives, listFiles, listFolder, getShareLink, getContentUrl, type DriveHandle, type FileEntry, type ShareLink } from '$lib/api';
+	import { discoverDrives, listFiles, listFolder, getShareLink, getContentUrl, fetchContentBlob, type DriveHandle, type FileEntry, type ShareLink } from '$lib/api';
 	import { onMount } from 'svelte';
 
 	let drives: DriveHandle[] = $state([]);
@@ -8,6 +8,7 @@
 	let selectedFile: FileEntry | null = $state(null);
 	let shareLink: ShareLink | null = $state(null);
 	let textContent: string | null = $state(null);
+	let contentUrl: string | null = $state(null);
 	let loading = $state(false);
 	let discovering = $state(true);
 
@@ -50,6 +51,7 @@
 		selectedFile = null;
 		shareLink = null;
 		textContent = null;
+		revokeContentUrl();
 		loading = true;
 		const files = await listFiles(drive);
 		columns = [files];
@@ -60,6 +62,7 @@
 		columns = columns.slice(0, columnIndex + 1);
 		shareLink = null;
 		textContent = null;
+		revokeContentUrl();
 
 		if (entry.type === 'directory' && selectedDrive) {
 			selectedFile = null;
@@ -67,14 +70,35 @@
 			const children = await listFolder(selectedDrive, entry.id);
 			columns = [...columns, children];
 			loading = false;
-		} else {
+		} else if (selectedDrive) {
 			selectedFile = entry;
-			if (selectedDrive && getViewerType(entry) === 'text') {
-				const url = getContentUrl(selectedDrive, entry.id);
-				const res = await fetch(url);
+			const viewerType = getViewerType(entry);
+
+			if (viewerType === 'text') {
+				contentUrl = await fetchContentBlob(selectedDrive, entry.id);
+				const res = await fetch(contentUrl);
 				textContent = await res.text();
+			} else if (viewerType !== 'none') {
+				if (selectedDrive.token) {
+					contentUrl = await fetchContentBlob(selectedDrive, entry.id);
+				} else {
+					contentUrl = getContentUrl(selectedDrive, entry.id);
+				}
+			} else {
+				if (selectedDrive.token) {
+					contentUrl = await fetchContentBlob(selectedDrive, entry.id);
+				} else {
+					contentUrl = getContentUrl(selectedDrive, entry.id);
+				}
 			}
 		}
+	}
+
+	function revokeContentUrl() {
+		if (contentUrl?.startsWith('blob:')) {
+			URL.revokeObjectURL(contentUrl);
+		}
+		contentUrl = null;
 	}
 
 	async function share() {
@@ -171,9 +195,8 @@
 				</div>
 			{/if}
 
-			{#if selectedFile && selectedDrive}
+			{#if selectedFile && selectedDrive && contentUrl}
 				{@const viewerType = getViewerType(selectedFile)}
-				{@const contentUrl = getContentUrl(selectedDrive, selectedFile.id)}
 
 				<div class="flex flex-col min-w-96 flex-1 border-r border-gray-800 bg-gray-900/50">
 					<div class="flex-1 overflow-auto p-4">
