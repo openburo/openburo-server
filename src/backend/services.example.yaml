@@ -10,3 +10,17 @@ services:
     url: https://www.googleapis.com/drive/v3
     token: your-oauth2-access-token
     verify_tls: true
+
+  - id: myjamespot
+    type: jamespot
+    url: https://your-instance.jamespot.example
+    # JWT whose payload contains `client_id`, `client_secret` and `refresh_token`
+    token: your-jamespot-jwt-here
+    verify_tls: true
+
+  - id: mynextcloud
+    type: nextcloud
+    url: https://your-nextcloud.example
+    # JWT whose payload contains `user` and `password` claims (Basic auth)
+    token: your-nextcloud-jwt-here
+    verify_tls: true

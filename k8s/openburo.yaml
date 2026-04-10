@@ -1,18 +1,42 @@
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: openburo-cozy
-  namespace: openburo
-type: Opaque
-stringData:
-  COZY_URL: "https://your-instance.cozy.example"
-  COZY_TOKEN: "your-bearer-token-here"
+  name: openburo-services
+  namespace: default
+data:
+  services.yaml: |
+    services:
+      - id: mytwake
+        type: twake
+        url: https://your-instance.twake.example
+        token: your-bearer-token-here
+        verify_tls: true
+
+      - id: mygdrive
+        type: gdrive
+        url: https://www.googleapis.com/drive/v3
+        token: your-oauth2-access-token
+        verify_tls: true
+
+      - id: mynextcloud
+        type: nextcloud
+        url: https://your-nextcloud.example
+        # JWT whose payload contains `user` and `password` claims (Basic auth)
+        token: your-nextcloud-jwt-here
+        verify_tls: true
+
+      - id: myjamespot
+        type: jamespot
+        url: https://your-instance.jamespot.example
+        # JWT whose payload contains `client_id`, `client_secret` and `refresh_token`
+        token: your-jamespot-jwt-here
+        verify_tls: true
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: openburo
-  namespace: openburo
+  namespace: default
   labels:
     app: openburo
 spec:
@@ -32,9 +56,11 @@ spec:
           ports:
             - name: http
               containerPort: 8000
-          envFrom:
-            - secretRef:
-                name: openburo-cozy
+          volumeMounts:
+            - name: services-config
+              mountPath: /app/services.yaml
+              subPath: services.yaml
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /docs
@@ -54,12 +80,16 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
+      volumes:
+        - name: services-config
+          configMap:
+            name: openburo-services
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: openburo
-  namespace: openburo
+  namespace: default
   labels:
     app: openburo
 spec:
