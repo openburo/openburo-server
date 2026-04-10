@@ -1,3 +1,9 @@
+version: "0.1.0"
+name: "OpenBURO Router"
+capabilities:
+  - PICK
+  - BROWSE
+
 services:
   - id: mytwake
     type: twake

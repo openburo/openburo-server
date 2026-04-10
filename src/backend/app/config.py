@@ -33,14 +33,23 @@ def _build_connector(entry: dict) -> ServiceConnector:
     )
 
 
-def load_services() -> dict[str, ServiceConnector]:
+def _load_config() -> dict:
     with open(CONFIG_PATH) as f:
-        config = yaml.safe_load(f)
+        return yaml.safe_load(f)
 
+
+def load_services(config: dict) -> dict[str, ServiceConnector]:
     connectors: dict[str, ServiceConnector] = {}
-    for entry in config["services"]:
+    for entry in config.get("services", []):
         connectors[entry["id"]] = _build_connector(entry)
     return connectors
 
 
-services = load_services()
+_config = _load_config()
+services = load_services(_config)
+
+server_meta = {
+    "version": _config.get("version", "0.1.0"),
+    "name": _config.get("name", "OpenBURO Router"),
+    "capabilities": _config.get("capabilities", ["PICK", "BROWSE"]),
+}

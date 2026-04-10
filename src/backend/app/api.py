@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
-from app.config import services
+from app.config import services, server_meta
 from app.models import File, Service, ShareLink
 
 router = APIRouter()
@@ -17,9 +17,7 @@ def get_connector(drive_id: str):
 @router.get("/.well-known/openburo/config.json")
 async def wellknown_config():
     return {
-        "version": "0.1.0",
-        "name": "OpenBURO Router",
-        "capabilities": ["PICK", "BROWSE"],
+        **server_meta,
         "endpoints": {
             "drive": "/drive",
         },
