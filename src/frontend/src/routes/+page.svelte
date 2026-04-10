@@ -198,6 +198,7 @@
 				{@const viewerType = getViewerType(selectedFile)}
 
 				<div class="flex flex-col min-w-96 flex-1 border-r border-gray-800 bg-gray-900/50">
+					{#key selectedFile.id}
 					<div class="flex-1 overflow-auto p-4">
 						{#if viewerType === 'image'}
 							<div class="flex items-center justify-center h-full">
@@ -233,6 +234,7 @@
 							</div>
 						{/if}
 					</div>
+					{/key}
 
 					<div class="border-t border-gray-800 px-4 py-3 flex items-center gap-4 text-xs text-gray-400 bg-gray-900 shrink-0">
 						<span class="font-medium text-gray-200 truncate">{selectedFile.name}</span>
