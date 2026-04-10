@@ -11,13 +11,9 @@ export interface ServiceConfig {
 
 export interface OpenBUROConfig {
 	version: string;
-	name: string;
+	name?: string;
 	services?: ServiceConfig[];
-	// Legacy single-service format
-	capabilities?: string[];
-	endpoints?: {
-		drive: string;
-	};
+	service?: ServiceConfig;
 }
 
 export interface DriveHandle {
@@ -49,54 +45,30 @@ async function fetchConfig(serverUrl: string): Promise<OpenBUROConfig> {
 	return res.json();
 }
 
+function serviceToHandle(serverUrl: string, serverName: string, svc: ServiceConfig): DriveHandle {
+	return {
+		id: `${serverUrl}::${svc.id}`,
+		name: `${svc.name} (${serverName})`,
+		capabilities: svc.capabilities,
+		serverUrl,
+		driveBase: `${serverUrl}${svc.endpoints.drive}`,
+	};
+}
+
 export async function discoverDrives(): Promise<DriveHandle[]> {
 	const drives: DriveHandle[] = [];
 
 	for (const server of servers) {
 		try {
 			const config = await fetchConfig(server.url);
+			const serverName = server.name || config.name || server.url;
 
 			if (config.services && config.services.length > 0) {
-				// Multi-service format: each service has its own endpoints
 				for (const svc of config.services) {
-					drives.push({
-						id: `${server.url}::${svc.id}`,
-						name: `${svc.name} (${server.name || config.name})`,
-						capabilities: svc.capabilities,
-						serverUrl: server.url,
-						driveBase: `${server.url}${svc.endpoints.drive}`,
-					});
+					drives.push(serviceToHandle(server.url, serverName, svc));
 				}
-			} else if (config.endpoints?.drive) {
-				// Single-service format — try listing sub-drives
-				const driveBase = `${server.url}${config.endpoints.drive}`;
-				try {
-					const res = await fetch(driveBase);
-					if (res.ok) {
-						const subDrives = await res.json();
-						if (Array.isArray(subDrives) && subDrives.length > 0) {
-							for (const d of subDrives) {
-								drives.push({
-									id: `${server.url}::${d.id}`,
-									name: `${d.name || d.id} (${server.name || config.name})`,
-									capabilities: config.capabilities || [],
-									serverUrl: server.url,
-									driveBase: `${driveBase}/${d.id}`,
-								});
-							}
-							continue;
-						}
-					}
-				} catch { /* fall through to single drive */ }
-
-				// Truly single drive
-				drives.push({
-					id: `${server.url}::direct`,
-					name: server.name || config.name,
-					capabilities: config.capabilities || [],
-					serverUrl: server.url,
-					driveBase: driveBase,
-				});
+			} else if (config.service) {
+				drives.push(serviceToHandle(server.url, serverName, config.service));
 			}
 		} catch {
 			console.warn(`Failed to discover ${server.url}`);
