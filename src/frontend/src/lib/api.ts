@@ -1,7 +1,7 @@
-import { servers, type ServerConfig } from './config';
+import { servers } from './config';
 
-export interface OpenBUROConfig {
-	version: string;
+export interface ServiceConfig {
+	id: string;
 	name: string;
 	capabilities: string[];
 	endpoints: {
@@ -9,12 +9,23 @@ export interface OpenBUROConfig {
 	};
 }
 
+export interface OpenBUROConfig {
+	version: string;
+	name: string;
+	services?: ServiceConfig[];
+	// Legacy single-service format
+	capabilities?: string[];
+	endpoints?: {
+		drive: string;
+	};
+}
+
 export interface DriveHandle {
 	id: string;
 	name: string;
+	capabilities: string[];
 	serverUrl: string;
-	driveBase: string; // full URL to the drive endpoint
-	driveId: string | null; // null for direct certified services (they ARE the drive)
+	driveBase: string;
 }
 
 export interface FileEntry {
@@ -44,34 +55,28 @@ export async function discoverDrives(): Promise<DriveHandle[]> {
 	for (const server of servers) {
 		try {
 			const config = await fetchConfig(server.url);
-			const driveBase = `${server.url}${config.endpoints.drive}`;
 
-			// Try to list sub-drives (router pattern)
-			const res = await fetch(driveBase);
-			if (res.ok) {
-				const subDrives = await res.json();
-				if (Array.isArray(subDrives) && subDrives.length > 0) {
-					for (const d of subDrives) {
-						drives.push({
-							id: `${server.url}::${d.id}`,
-							name: `${d.name || d.id} (${server.name || config.name})`,
-							serverUrl: server.url,
-							driveBase,
-							driveId: d.id,
-						});
-					}
-					continue;
+			if (config.services && config.services.length > 0) {
+				// Multi-service format: each service has its own endpoints
+				for (const svc of config.services) {
+					drives.push({
+						id: `${server.url}::${svc.id}`,
+						name: `${svc.name} (${server.name || config.name})`,
+						capabilities: svc.capabilities,
+						serverUrl: server.url,
+						driveBase: `${server.url}${svc.endpoints.drive}`,
+					});
 				}
+			} else if (config.endpoints?.drive) {
+				// Single-service format (direct certified service)
+				drives.push({
+					id: `${server.url}::direct`,
+					name: server.name || config.name,
+					capabilities: config.capabilities || [],
+					serverUrl: server.url,
+					driveBase: `${server.url}${config.endpoints.drive}`,
+				});
 			}
-
-			// Single drive (certified service pattern)
-			drives.push({
-				id: `${server.url}::direct`,
-				name: server.name || config.name,
-				serverUrl: server.url,
-				driveBase,
-				driveId: null,
-			});
 		} catch {
 			console.warn(`Failed to discover ${server.url}`);
 		}
@@ -80,33 +85,26 @@ export async function discoverDrives(): Promise<DriveHandle[]> {
 	return drives;
 }
 
-function drivePath(handle: DriveHandle): string {
-	if (handle.driveId) {
-		return `${handle.driveBase}/${handle.driveId}`;
-	}
-	return handle.driveBase;
-}
-
 export async function listFiles(handle: DriveHandle): Promise<FileEntry[]> {
-	const res = await fetch(`${drivePath(handle)}/files?deep=0`);
+	const res = await fetch(`${handle.driveBase}/files?deep=0`);
 	return res.json();
 }
 
 export async function listFolder(handle: DriveHandle, folderId: string): Promise<FileEntry[]> {
-	const res = await fetch(`${drivePath(handle)}/files/${folderId}/children?deep=0`);
+	const res = await fetch(`${handle.driveBase}/files/${folderId}/children?deep=0`);
 	return res.json();
 }
 
 export async function getFile(handle: DriveHandle, fileId: string): Promise<FileEntry> {
-	const res = await fetch(`${drivePath(handle)}/files/${fileId}`);
+	const res = await fetch(`${handle.driveBase}/files/${fileId}`);
 	return res.json();
 }
 
 export function getContentUrl(handle: DriveHandle, fileId: string): string {
-	return `${drivePath(handle)}/files/${fileId}/content`;
+	return `${handle.driveBase}/files/${fileId}/content`;
 }
 
 export async function getShareLink(handle: DriveHandle, fileId: string): Promise<ShareLink> {
-	const res = await fetch(`${drivePath(handle)}/files/${fileId}/share`);
+	const res = await fetch(`${handle.driveBase}/files/${fileId}/share`);
 	return res.json();
 }

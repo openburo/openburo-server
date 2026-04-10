@@ -51,5 +51,15 @@ services = load_services(_config)
 server_meta = {
     "version": _config.get("version", "0.1.0"),
     "name": _config.get("name", "OpenBURO Router"),
-    "capabilities": _config.get("capabilities", ["PICK", "BROWSE"]),
 }
+
+service_configs = []
+for entry in _config.get("services", []):
+    service_configs.append({
+        "id": entry["id"],
+        "name": entry.get("name", entry["id"]),
+        "capabilities": entry.get("capabilities", ["PICK"]),
+        "endpoints": {
+            "drive": f"/drive/{entry['id']}",
+        },
+    })

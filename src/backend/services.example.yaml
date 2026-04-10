@@ -1,39 +1,43 @@
 version: "0.1.0"
 name: "OpenBURO Router"
-capabilities:
-  - PICK
-  - BROWSE
 
 services:
   - id: mytwake
+    name: "Twake Drive"
     type: twake
+    capabilities: [PICK, BROWSE]
     url: https://your-instance.twake.example
     token: your-bearer-token-here
     verify_tls: true
 
   - id: mygdrive
+    name: "Google Drive"
     type: gdrive
+    capabilities: [PICK]
     url: https://www.googleapis.com/drive/v3
     token: your-oauth2-access-token
     verify_tls: true
 
   - id: myjamespot
+    name: "Jamespot"
     type: jamespot
+    capabilities: [PICK]
     url: https://your-instance.jamespot.example
-    # JWT whose payload contains `client_id`, `client_secret` and `refresh_token`
     token: your-jamespot-jwt-here
     verify_tls: true
 
   - id: mynextcloud
+    name: "Nextcloud"
     type: nextcloud
+    capabilities: [PICK, BROWSE]
     url: https://your-nextcloud.example
-    # JWT whose payload contains `user` and `password` claims (Basic auth)
     token: your-nextcloud-jwt-here
     verify_tls: true
 
-  # Remote OpenBURO-certified service (auto-discovers via .well-known)
   - id: remote-drive
+    name: "Remote Service"
     type: openburo
+    capabilities: [PICK]
     url: https://remote-service.example
     token: optional-bearer-token
     verify_tls: true

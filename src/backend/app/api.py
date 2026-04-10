@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
-from app.config import services, server_meta
+from app.config import services, server_meta, service_configs
 from app.models import File, Service, ShareLink
 
 router = APIRouter()
@@ -18,9 +18,7 @@ def get_connector(drive_id: str):
 async def wellknown_config():
     return {
         **server_meta,
-        "endpoints": {
-            "drive": "/drive",
-        },
+        "services": service_configs,
     }
 
 
