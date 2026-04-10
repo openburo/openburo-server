@@ -1,14 +1,15 @@
 <script lang="ts">
-	import { listDrives, listFiles, listFolder, getShareLink, getContentUrl, type Service, type FileEntry, type ShareLink } from '$lib/api';
+	import { discoverDrives, listFiles, listFolder, getShareLink, getContentUrl, type DriveHandle, type FileEntry, type ShareLink } from '$lib/api';
 	import { onMount } from 'svelte';
 
-	let services: Service[] = $state([]);
-	let selectedService: string | null = $state(null);
+	let drives: DriveHandle[] = $state([]);
+	let selectedDrive: DriveHandle | null = $state(null);
 	let columns: FileEntry[][] = $state([]);
 	let selectedFile: FileEntry | null = $state(null);
 	let shareLink: ShareLink | null = $state(null);
 	let textContent: string | null = $state(null);
 	let loading = $state(false);
+	let discovering = $state(true);
 
 	const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'image/bmp'];
 	const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
@@ -40,16 +41,17 @@
 	}
 
 	onMount(async () => {
-		services = await listDrives();
+		drives = await discoverDrives();
+		discovering = false;
 	});
 
-	async function selectService(id: string) {
-		selectedService = id;
+	async function selectDrive(drive: DriveHandle) {
+		selectedDrive = drive;
 		selectedFile = null;
 		shareLink = null;
 		textContent = null;
 		loading = true;
-		const files = await listFiles(id);
+		const files = await listFiles(drive);
 		columns = [files];
 		loading = false;
 	}
@@ -59,16 +61,16 @@
 		shareLink = null;
 		textContent = null;
 
-		if (entry.type === 'directory' && selectedService) {
+		if (entry.type === 'directory' && selectedDrive) {
 			selectedFile = null;
 			loading = true;
-			const children = await listFolder(selectedService, entry.id);
+			const children = await listFolder(selectedDrive, entry.id);
 			columns = [...columns, children];
 			loading = false;
 		} else {
 			selectedFile = entry;
-			if (selectedService && getViewerType(entry) === 'text') {
-				const url = getContentUrl(selectedService, entry.id);
+			if (selectedDrive && getViewerType(entry) === 'text') {
+				const url = getContentUrl(selectedDrive, entry.id);
 				const res = await fetch(url);
 				textContent = await res.text();
 			}
@@ -76,8 +78,8 @@
 	}
 
 	async function share() {
-		if (!selectedService || !selectedFile) return;
-		shareLink = await getShareLink(selectedService, selectedFile.id);
+		if (!selectedDrive || !selectedFile) return;
+		shareLink = await getShareLink(selectedDrive, selectedFile.id);
 	}
 
 	function formatSize(bytes: number): string {
@@ -93,35 +95,41 @@
 			hour: '2-digit', minute: '2-digit'
 		});
 	}
-
-	function extensionFromName(name: string): string {
-		const dot = name.lastIndexOf('.');
-		return dot >= 0 ? name.slice(dot + 1) : '';
-	}
 </script>
 
 <div class="h-screen flex flex-col bg-gray-950 text-gray-100">
 	<header class="flex items-center gap-4 px-6 py-3 border-b border-gray-800 bg-gray-900">
 		<h1 class="text-lg font-semibold tracking-tight">OpenBURO</h1>
-		<div class="flex gap-2">
-			{#each services as service}
-				<button
-					class="px-3 py-1.5 rounded-md text-sm transition-colors {selectedService === service.id
-						? 'bg-blue-600 text-white'
-						: 'bg-gray-800 text-gray-300 hover:bg-gray-700'}"
-					onclick={() => selectService(service.id)}
-				>
-					{service.name}
-				</button>
-			{/each}
-		</div>
+		{#if discovering}
+			<span class="text-sm text-gray-500">Discovering services...</span>
+		{:else}
+			<div class="flex gap-2 overflow-x-auto">
+				{#each drives as drive}
+					<button
+						class="px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap {selectedDrive?.id === drive.id
+							? 'bg-blue-600 text-white'
+							: 'bg-gray-800 text-gray-300 hover:bg-gray-700'}"
+						onclick={() => selectDrive(drive)}
+					>
+						{drive.name}
+					</button>
+				{/each}
+				{#if drives.length === 0}
+					<span class="text-sm text-gray-500">No services found</span>
+				{/if}
+			</div>
+		{/if}
 	</header>
 
 	<div class="flex flex-1 overflow-hidden">
 		<div class="flex flex-1 overflow-x-auto">
 			{#if columns.length === 0}
 				<div class="flex items-center justify-center flex-1 text-gray-500">
-					Select a service to browse files
+					{#if drives.length > 0}
+						Select a service to browse files
+					{:else if !discovering}
+						No services available
+					{/if}
 				</div>
 			{/if}
 
@@ -163,13 +171,11 @@
 				</div>
 			{/if}
 
-			<!-- File viewer panel (inline, right of columns) -->
-			{#if selectedFile && selectedService}
+			{#if selectedFile && selectedDrive}
 				{@const viewerType = getViewerType(selectedFile)}
-				{@const contentUrl = getContentUrl(selectedService, selectedFile.id)}
+				{@const contentUrl = getContentUrl(selectedDrive, selectedFile.id)}
 
 				<div class="flex flex-col min-w-96 flex-1 border-r border-gray-800 bg-gray-900/50">
-					<!-- Viewer area -->
 					<div class="flex-1 overflow-auto p-4">
 						{#if viewerType === 'image'}
 							<div class="flex items-center justify-center h-full">
@@ -206,7 +212,6 @@
 						{/if}
 					</div>
 
-					<!-- File info bar -->
 					<div class="border-t border-gray-800 px-4 py-3 flex items-center gap-4 text-xs text-gray-400 bg-gray-900 shrink-0">
 						<span class="font-medium text-gray-200 truncate">{selectedFile.name}</span>
 						<span>{selectedFile.mime_type}</span>
