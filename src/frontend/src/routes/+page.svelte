@@ -72,24 +72,23 @@
 			loading = false;
 		} else if (selectedDrive) {
 			selectedFile = entry;
+			contentUrl = null;
 			const viewerType = getViewerType(entry);
 
-			if (viewerType === 'text') {
-				contentUrl = await fetchContentBlob(selectedDrive, entry.id);
-				const res = await fetch(contentUrl);
-				textContent = await res.text();
-			} else if (viewerType !== 'none') {
-				if (selectedDrive.token) {
+			try {
+				if (viewerType === 'text') {
+					const blobUrl = await fetchContentBlob(selectedDrive, entry.id);
+					const res = await fetch(blobUrl);
+					textContent = await res.text();
+					URL.revokeObjectURL(blobUrl);
+					contentUrl = 'text-loaded';
+				} else if (selectedDrive.token) {
 					contentUrl = await fetchContentBlob(selectedDrive, entry.id);
 				} else {
 					contentUrl = getContentUrl(selectedDrive, entry.id);
 				}
-			} else {
-				if (selectedDrive.token) {
-					contentUrl = await fetchContentBlob(selectedDrive, entry.id);
-				} else {
-					contentUrl = getContentUrl(selectedDrive, entry.id);
-				}
+			} catch {
+				contentUrl = null;
 			}
 		}
 	}
