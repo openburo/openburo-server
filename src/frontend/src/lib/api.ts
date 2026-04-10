@@ -68,13 +68,34 @@ export async function discoverDrives(): Promise<DriveHandle[]> {
 					});
 				}
 			} else if (config.endpoints?.drive) {
-				// Single-service format (direct certified service)
+				// Single-service format — try listing sub-drives
+				const driveBase = `${server.url}${config.endpoints.drive}`;
+				try {
+					const res = await fetch(driveBase);
+					if (res.ok) {
+						const subDrives = await res.json();
+						if (Array.isArray(subDrives) && subDrives.length > 0) {
+							for (const d of subDrives) {
+								drives.push({
+									id: `${server.url}::${d.id}`,
+									name: `${d.name || d.id} (${server.name || config.name})`,
+									capabilities: config.capabilities || [],
+									serverUrl: server.url,
+									driveBase: `${driveBase}/${d.id}`,
+								});
+							}
+							continue;
+						}
+					}
+				} catch { /* fall through to single drive */ }
+
+				// Truly single drive
 				drives.push({
 					id: `${server.url}::direct`,
 					name: server.name || config.name,
 					capabilities: config.capabilities || [],
 					serverUrl: server.url,
-					driveBase: `${server.url}${config.endpoints.drive}`,
+					driveBase: driveBase,
 				});
 			}
 		} catch {
