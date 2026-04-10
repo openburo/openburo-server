@@ -24,3 +24,10 @@ services:
     # JWT whose payload contains `user` and `password` claims (Basic auth)
     token: your-nextcloud-jwt-here
     verify_tls: true
+
+  # Remote OpenBURO-certified service (auto-discovers via .well-known)
+  - id: remote-drive
+    type: openburo
+    url: https://remote-service.example
+    token: optional-bearer-token
+    verify_tls: true

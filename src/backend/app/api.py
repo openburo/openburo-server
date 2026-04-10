@@ -14,6 +14,18 @@ def get_connector(drive_id: str):
     return connector
 
 
+@router.get("/.well-known/openburo/config.json")
+async def wellknown_config():
+    return {
+        "version": "0.1.0",
+        "name": "OpenBURO Router",
+        "capabilities": ["PICK", "BROWSE"],
+        "endpoints": {
+            "drive": "/drive",
+        },
+    }
+
+
 @router.get("/drive", response_model=list[Service])
 async def list_drives():
     result = []

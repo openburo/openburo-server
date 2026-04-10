@@ -7,12 +7,14 @@ from app.connectors.twake import TwakeConnector
 from app.connectors.gdrive import GDriveConnector
 from app.connectors.jamespot import JamespotConnector
 from app.connectors.nextcloud import NextcloudConnector
+from app.connectors.openburo import OpenBUROConnector
 
 CONNECTOR_TYPES: dict[str, type[ServiceConnector]] = {
     "twake": TwakeConnector,
     "gdrive": GDriveConnector,
     "jamespot": JamespotConnector,
     "nextcloud": NextcloudConnector,
+    "openburo": OpenBUROConnector,
 }
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "services.yaml"
@@ -26,7 +28,7 @@ def _build_connector(entry: dict) -> ServiceConnector:
     return cls(
         id=entry["id"],
         base_url=entry["url"],
-        token=entry["token"],
+        token=entry.get("token", ""),
         verify_tls=entry.get("verify_tls", True),
     )
 
